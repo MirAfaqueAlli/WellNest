@@ -1,0 +1,7 @@
+# Root — ignore OS and editor clutter
+node_modules/
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.log
