@@ -12,8 +12,6 @@ WellNest helps hospital staff manage the full care journey — from the first an
 - 👶 **Child Immunization Schedule** — Auto-generated upon recording delivery (At Birth → 6 Weeks → 10 Weeks → ... → 2 Years+)
 - 📱 **Automated WhatsApp Notifications** — Instant stage-complete alerts + daily cron reminders (7-day, 1-day, today, missed)
 - 🏥 **Multi-Hospital API Config** — Each hospital can set its own WhatsApp API credentials directly from the settings panel
-- 📋 **Stage Notes** — Staff can leave notes at stage completion that appear on the next stage for the next visit
-- ⏭️ **Auto-Skip** — Completing a later stage automatically marks earlier skipped stages correctly
 - 📊 **Dashboard** — Live stats for active patients, upcoming appointments, and missed stages
 - 📱 **Fully Responsive** — Works on desktop, tablet, and mobile
 
@@ -99,7 +97,3 @@ See [`backend/.env.example`](backend/.env.example) for all required variables.
 | Scheduling | node-cron |
 
 ---
-
-## 📄 License
-
-MIT
