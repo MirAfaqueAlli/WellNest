@@ -540,15 +540,14 @@ async function seed() {
         trigger_value: stage.trigger_value,
         order_index:   stage.order_index,
       });
-      console.log(`  ↻  Updated: ${stage.stage_code}`);
+
     } else {
       await StageTemplate.create(stage);
-      console.log(`  ✚  Created: ${stage.stage_code}`);
+
     }
   }
 
-  console.log(`\n✅ All ${allStages.length} stage templates seeded/updated successfully.`);
-  process.exit(0);
+  console.log(`✅ Stage templates: ${allStages.length} seeded/updated.`);
 }
 
-seed().catch(e => { console.error('❌ Seeding failed:', e.message); process.exit(1); });
+module.exports = { seed };

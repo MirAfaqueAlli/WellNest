@@ -9,9 +9,13 @@ const hospitalRoutes     = require('./routes/hospital.routes');
 const patientRoutes      = require('./routes/patient.routes');
 const stageRoutes        = require('./routes/stage.routes');
 const notificationRoutes = require('./routes/notification.routes');
+const setupRoutes        = require('./routes/setup.routes');
 
 // ── Cron (registers automatically on require) ─────────────────────────────────
 require('./services/cron.service');
+
+// ── Seeders ───────────────────────────────────────────────────────────────────
+const { seed: seedStageTemplates } = require('./seeders/stageTemplates.seed');
 
 const app = express();
 
@@ -24,6 +28,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // ── Mount Routes ──────────────────────────────────────────────────────────────
+app.use('/api/setup',         setupRoutes);        // first-run onboarding (no auth)
 app.use('/api/auth',          authRoutes);
 app.use('/api/hospitals',     hospitalRoutes);
 app.use('/api/patients',      patientRoutes);
@@ -51,8 +56,9 @@ sequelize.authenticate()
     console.log('✅ MySQL connected');
     return sequelize.sync({ force: false });
   })
-  .then(() => {
+  .then(async () => {
     console.log('✅ Database tables synced');
+    await seedStageTemplates();    // auto-seed stage templates on every startup (safe — uses upsert)
     app.listen(PORT, () => {
       console.log(`🚀 WellNest API running on http://localhost:${PORT}`);
       console.log(`   Health: http://localhost:${PORT}/api/health`);

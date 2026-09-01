@@ -29,6 +29,8 @@ export default function Sidebar({ isOpen }) {
     ? user.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
     : 'MT';
 
+  const isAdmin = user?.role === 'admin' || user?.role === 'superadmin';
+
   return (
     <aside className={`sidebar${isOpen ? ' sidebar-open' : ''}`}>
       {/* Brand */}
@@ -52,6 +54,8 @@ export default function Sidebar({ isOpen }) {
         ))}
 
         {(user?.role === 'superadmin' || user?.role === 'admin') && (
+        {/* Admin section — only visible to admin and superadmin */}
+        {isAdmin && (
           <>
             <div className="sidebar-section-label" style={{ marginTop: '0.75rem' }}>Admin</div>
             {adminItems.map(({ to, icon: Icon, label }) => (

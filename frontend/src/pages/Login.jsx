@@ -1,17 +1,20 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, HeartPulse } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { Eye, EyeOff, HeartPulse, CheckCircle } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import api from '../api/axios';
 
 export default function Login() {
-  const [email, setEmail]       = useState('');
+
+  const { setAuth }             = useAuthStore();
+  const navigate                = useNavigate();
+  const location                = useLocation();
+  const fromSetup               = location.state?.setupComplete || false;
+  const [email, setEmail]       = useState(location.state?.email || '');
   const [password, setPassword] = useState('');
   const [showPwd, setShowPwd]   = useState(false);
   const [loading, setLoading]   = useState(false);
   const [error, setError]       = useState('');
-  const { setAuth }             = useAuthStore();
-  const navigate                = useNavigate();
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -62,6 +65,21 @@ export default function Login() {
             <h2 style={{ fontSize: '0.875rem', fontWeight: 600, marginBottom: '1.25rem' }}>
               Sign in to your account
             </h2>
+
+            {fromSetup && (
+              <div style={{
+                padding: '0.5rem 0.75rem',
+                background: 'var(--color-success-bg)',
+                border: '1px solid #bbf7d0',
+                borderRadius: 'var(--radius-sm)',
+                fontSize: '0.75rem',
+                color: 'var(--color-success)',
+                marginBottom: '1rem',
+                display: 'flex', alignItems: 'center', gap: '0.4rem',
+              }}>
+                <CheckCircle size={13} /> Setup complete! Sign in with your new credentials.
+              </div>
+            )}
 
             {error && (
               <div style={{

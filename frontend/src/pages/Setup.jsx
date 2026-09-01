@@ -1,0 +1,286 @@
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Eye, EyeOff, HeartPulse, ChevronRight, ChevronLeft, CheckCircle } from 'lucide-react';
+
+export default function Setup({ onSetupComplete }) {
+  const navigate  = useNavigate();
+  const [step, setStep]       = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [error, setError]     = useState('');
+  const [showPass, setShowPass]    = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+
+  const [form, setForm] = useState({
+    hospital_name:    '',
+    hospital_address: '',
+    hospital_phone:   '',
+    admin_name:       '',
+    admin_email:      '',
+    admin_password:   '',
+    admin_confirm:    '',
+  });
+
+  function set(k, v) { setForm(f => ({ ...f, [k]: v })); setError(''); }
+
+  function nextStep(e) {
+    e.preventDefault();
+    if (!form.hospital_name.trim()) { setError('Hospital name is required'); return; }
+    setError('');
+    setStep(2);
+  }
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setError('');
+    if (!form.admin_name.trim())  { setError('Admin name is required'); return; }
+    if (!form.admin_email.trim()) { setError('Email is required'); return; }
+    if (form.admin_password.length < 8) { setError('Password must be at least 8 characters'); return; }
+    if (form.admin_password !== form.admin_confirm) { setError('Passwords do not match'); return; }
+
+    setLoading(true);
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || '/api'}/setup`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          hospital_name:    form.hospital_name.trim(),
+          hospital_address: form.hospital_address.trim() || undefined,
+          hospital_phone:   form.hospital_phone.trim()   || undefined,
+          admin_name:       form.admin_name.trim(),
+          admin_email:      form.admin_email.trim(),
+          admin_password:   form.admin_password,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) { setError(data.error || 'Setup failed'); return; }
+
+      // Update parent state so /dashboard unlocks, then go to login
+      onSetupComplete();
+      navigate('/login', {
+        state: { email: form.admin_email.trim(), setupComplete: true }
+      });
+    } catch {
+      setError('Network error. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div style={{
+      minHeight: '100vh',
+      background: 'var(--color-bg-primary)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '1rem',
+    }}>
+      <div style={{ width: '100%', maxWidth: 360 }}>
+
+        {/* Logo — identical to Login */}
+        <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+          <div style={{
+            width: 44, height: 44, borderRadius: '10px',
+            background: 'var(--color-primary)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            margin: '0 auto 0.875rem',
+          }}>
+            <HeartPulse size={22} color="#fff" />
+          </div>
+          <h1 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '0.25rem' }}>
+            WellNest
+          </h1>
+          <p style={{ fontSize: '0.75rem', color: 'var(--color-text-faint)' }}>
+            Maternal & Child Care Management
+          </p>
+        </div>
+
+        {/* Step indicator */}
+        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+          {[1, 2].map(s => (
+            <div key={s} style={{ flex: 1, height: 3, borderRadius: 99,
+              background: s <= step ? 'var(--color-primary)' : 'var(--color-border)',
+              transition: 'background 0.3s',
+            }} />
+          ))}
+        </div>
+
+        {/* Card — identical structure to Login */}
+        <div className="card">
+          <div className="card-body">
+            <h2 style={{ fontSize: '0.875rem', fontWeight: 600, marginBottom: '1.25rem' }}>
+              {step === 1 ? 'Hospital Details' : 'Admin Account'}
+            </h2>
+
+            {error && (
+              <div style={{
+                padding: '0.5rem 0.75rem',
+                background: 'var(--color-danger-bg)',
+                border: '1px solid #fecdd3',
+                borderRadius: 'var(--radius-sm)',
+                fontSize: '0.75rem',
+                color: 'var(--color-error)',
+                marginBottom: '1rem',
+              }}>
+                {error}
+              </div>
+            )}
+
+            {/* ── STEP 1: Hospital ── */}
+            {step === 1 && (
+              <form onSubmit={nextStep} style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
+                <div className="form-group">
+                  <label className="input-label">Hospital Name *</label>
+                  <input
+                    className="input"
+                    placeholder="e.g. City General Hospital"
+                    value={form.hospital_name}
+                    onChange={e => set('hospital_name', e.target.value)}
+                    required
+                    autoFocus
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="input-label">Address <span style={{ color: 'var(--color-text-faint)', fontWeight: 400 }}>(optional)</span></label>
+                  <input
+                    className="input"
+                    placeholder="Street, City, State"
+                    value={form.hospital_address}
+                    onChange={e => set('hospital_address', e.target.value)}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="input-label">Phone <span style={{ color: 'var(--color-text-faint)', fontWeight: 400 }}>(optional)</span></label>
+                  <input
+                    className="input"
+                    placeholder="+91 9876543210"
+                    value={form.hospital_phone}
+                    onChange={e => set('hospital_phone', e.target.value)}
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  className="btn-primary"
+                  style={{ width: '100%', justifyContent: 'center', marginTop: '0.25rem' }}
+                >
+                  Continue <ChevronRight size={14} />
+                </button>
+              </form>
+            )}
+
+            {/* ── STEP 2: Admin Account ── */}
+            {step === 2 && (
+              <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
+                <div className="form-group">
+                  <label className="input-label">Full Name *</label>
+                  <input
+                    className="input"
+                    placeholder="Dr. Priya Sharma"
+                    value={form.admin_name}
+                    onChange={e => set('admin_name', e.target.value)}
+                    required
+                    autoFocus
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="input-label">Email Address *</label>
+                  <input
+                    className="input"
+                    type="email"
+                    placeholder="admin@yourhospital.com"
+                    value={form.admin_email}
+                    onChange={e => set('admin_email', e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="input-label">Password * <span style={{ color: 'var(--color-text-faint)', fontWeight: 400 }}>(min. 8 chars)</span></label>
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      className="input"
+                      type={showPass ? 'text' : 'password'}
+                      placeholder="••••••••"
+                      value={form.admin_password}
+                      onChange={e => set('admin_password', e.target.value)}
+                      style={{ paddingRight: '2.5rem' }}
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPass(s => !s)}
+                      style={{
+                        position: 'absolute', right: '0.625rem', top: '50%',
+                        transform: 'translateY(-50%)', background: 'none', border: 'none',
+                        color: 'var(--color-text-faint)', cursor: 'pointer', padding: 0,
+                      }}
+                    >
+                      {showPass ? <EyeOff size={14} /> : <Eye size={14} />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label className="input-label">Confirm Password *</label>
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      className="input"
+                      type={showConfirm ? 'text' : 'password'}
+                      placeholder="••••••••"
+                      value={form.admin_confirm}
+                      onChange={e => set('admin_confirm', e.target.value)}
+                      style={{ paddingRight: '2.5rem' }}
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirm(s => !s)}
+                      style={{
+                        position: 'absolute', right: '0.625rem', top: '50%',
+                        transform: 'translateY(-50%)', background: 'none', border: 'none',
+                        color: 'var(--color-text-faint)', cursor: 'pointer', padding: 0,
+                      }}
+                    >
+                      {showConfirm ? <EyeOff size={14} /> : <Eye size={14} />}
+                    </button>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.25rem' }}>
+                  <button
+                    type="button"
+                    onClick={() => { setStep(1); setError(''); }}
+                    className="btn-secondary"
+                    style={{ flexShrink: 0 }}
+                  >
+                    <ChevronLeft size={14} />
+                  </button>
+                  <button
+                    type="submit"
+                    className="btn-primary"
+                    disabled={loading}
+                    style={{ flex: 1, justifyContent: 'center' }}
+                  >
+                    {loading
+                      ? <span className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }} />
+                      : <><CheckCircle size={13} /> Complete Setup</>
+                    }
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+
+        <p style={{ textAlign: 'center', fontSize: '0.6875rem', color: 'var(--color-text-faint)', marginTop: '1.5rem' }}>
+          WellNest v1.0 · Hospital Management
+        </p>
+      </div>
+    </div>
+  );
+}

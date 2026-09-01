@@ -49,7 +49,6 @@ async function resolveCredentials(hospitalId) {
       }
     } catch (_) { /* fall through to env */ }
   }
-  // Fallback to .env
   return {
     apiUrl: process.env.WHATSAPP_API_URL,
     apiKey: process.env.WHATSAPP_API_KEY,
@@ -58,14 +57,8 @@ async function resolveCredentials(hospitalId) {
 
 // ── Core Send Function ────────────────────────────────────────────────────────
 /**
- * Send a WhatsApp message and log it to the DB.
- *
- * @param {string}      to          - Patient WhatsApp number
- * @param {string}      templateKey - Key from templates object above
- * @param {object}      data        - Template variables
- * @param {number|null} patientId   - For DB logging
- * @param {number|null} stageId     - For DB logging
- * @param {number|null} hospitalId  - To resolve API credentials from DB
+ * Send a WhatsApp message via GET request with query params (Rextrox v2 format):
+ *   GET {apiUrl}?apikey={apiKey}&recipient={phone}&text={message}
  */
 async function sendWhatsApp(to, templateKey, data, patientId = null, stageId = null, hospitalId = null) {
   const body           = templates[templateKey]?.(data) ?? data.custom_message ?? '';
@@ -81,18 +74,15 @@ async function sendWhatsApp(to, templateKey, data, patientId = null, stageId = n
       throw new Error('WhatsApp API credentials not configured. Please set them in Hospital Settings.');
     }
 
-    const response = await axios.post(
-      apiUrl,
-      { number: formattedPhone, message: body },
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key':    apiKey,
-        },
-        timeout:        45000,
-        validateStatus: () => true,
-      }
-    );
+    const response = await axios.get(apiUrl, {
+      params: {
+        apikey:    apiKey,
+        recipient: formattedPhone,
+        text:      body,
+      },
+      timeout:        45000,
+      validateStatus: () => true,
+    });
 
     console.log(`[WhatsApp] ${response.status} → ${formattedPhone} | type: ${templateKey} | res: ${JSON.stringify(response.data)}`);
 

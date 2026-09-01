@@ -12,22 +12,23 @@ const PAGE_TITLES = {
   '/staff':         'Staff Management',
 };
 
+// Routes only accessible to admin / superadmin
+const ADMIN_ONLY_ROUTES = ['/hospitals', '/staff'];
+
 export default function AppLayout() {
-  const { token, refreshUser } = useAuthStore();
+  const { token, user, refreshUser } = useAuthStore();
   const { pathname } = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // Sync fresh user data on every app load (fixes stale localStorage)
-  useEffect(() => {
-    refreshUser();
-  }, []);
-
-  // Close sidebar on route change (mobile navigation)
-  useEffect(() => {
-    setSidebarOpen(false);
-  }, [pathname]);
+  useEffect(() => { refreshUser(); }, []);
+  useEffect(() => { setSidebarOpen(false); }, [pathname]);
 
   if (!token) return <Navigate to="/login" replace />;
+
+  // Block staff from accessing admin-only pages via direct URL
+  const isAdmin = user?.role === 'admin' || user?.role === 'superadmin';
+  const isAdminRoute = ADMIN_ONLY_ROUTES.some(r => pathname.startsWith(r));
+  if (isAdminRoute && !isAdmin) return <Navigate to="/dashboard" replace />;
 
   const title = PAGE_TITLES[pathname] ||
     Object.entries(PAGE_TITLES).find(([k]) => pathname.startsWith(k))?.[1] ||
@@ -35,7 +36,6 @@ export default function AppLayout() {
 
   return (
     <div className="app-layout">
-      {/* Mobile overlay — tap to close sidebar */}
       {sidebarOpen && (
         <div
           className="sidebar-overlay"
