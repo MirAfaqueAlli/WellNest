@@ -51,17 +51,21 @@ export default function Sidebar({ isOpen }) {
           </NavLink>
         ))}
 
-        <div className="sidebar-section-label" style={{ marginTop: '0.75rem' }}>Admin</div>
-        {adminItems.map(({ to, icon: Icon, label }) => (
-          <NavLink
-            key={to}
-            to={to}
-            className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
-          >
-            <Icon size={16} strokeWidth={1.8} />
-            {label}
-          </NavLink>
-        ))}
+        {(user?.role === 'superadmin' || user?.role === 'admin') && (
+          <>
+            <div className="sidebar-section-label" style={{ marginTop: '0.75rem' }}>Admin</div>
+            {adminItems.map(({ to, icon: Icon, label }) => (
+              <NavLink
+                key={to}
+                to={to}
+                className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
+              >
+                <Icon size={16} strokeWidth={1.8} />
+                {label}
+              </NavLink>
+            ))}
+          </>
+        )}
       </nav>
 
       {/* User footer */}
