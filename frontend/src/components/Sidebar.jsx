@@ -6,9 +6,9 @@ import {
 import { useAuthStore } from '../store/authStore';
 
 const navItems = [
-  { to: '/dashboard',      icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/patients',       icon: Users,           label: 'Patients'  },
-  { to: '/notifications',  icon: Bell,            label: 'Notifications' },
+  { to: '/dashboard',     icon: LayoutDashboard, label: 'Dashboard' },
+  { to: '/patients',      icon: Users,           label: 'Patients'  },
+  { to: '/notifications', icon: Bell,            label: 'Notifications' },
 ];
 
 const adminItems = [
@@ -33,11 +33,13 @@ export default function Sidebar({ isOpen }) {
 
   return (
     <aside className={`sidebar${isOpen ? ' sidebar-open' : ''}`}>
+      {/* Brand */}
       <div className="sidebar-brand">
         <div className="sidebar-brand-name">WellNest</div>
         <div className="sidebar-brand-sub">Maternal Care System</div>
       </div>
 
+      {/* Nav */}
       <nav className="sidebar-nav" style={{ flex: 1 }}>
         <div className="sidebar-section-label">Main</div>
         {navItems.map(({ to, icon: Icon, label }) => (
@@ -68,6 +70,7 @@ export default function Sidebar({ isOpen }) {
         )}
       </nav>
 
+      {/* User footer */}
       <div className="sidebar-footer">
         <div className="sidebar-user">
           <div className="sidebar-avatar">{initials}</div>
