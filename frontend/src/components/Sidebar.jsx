@@ -53,7 +53,6 @@ export default function Sidebar({ isOpen }) {
           </NavLink>
         ))}
 
-        {(user?.role === 'superadmin' || user?.role === 'admin') && (
         {/* Admin section — only visible to admin and superadmin */}
         {isAdmin && (
           <>
