@@ -1,14 +1,3 @@
-/**
- * reset-for-setup.js
- * ─────────────────────────────────────────────────────────────────
- * Clears hospitals and users so the setup wizard reappears.
- * Stage templates and all other data stay intact.
- *
- * Usage:  node scripts/reset-for-setup.js
- *
- * ⚠️  DEV / TESTING ONLY — do NOT run on production with real data.
- * ─────────────────────────────────────────────────────────────────
- */
 
 require('dotenv').config();
 const { User, Hospital, sequelize } = require('../models/index');
