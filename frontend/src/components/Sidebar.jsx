@@ -33,13 +33,11 @@ export default function Sidebar({ isOpen }) {
 
   return (
     <aside className={`sidebar${isOpen ? ' sidebar-open' : ''}`}>
-      {/* Brand */}
       <div className="sidebar-brand">
         <div className="sidebar-brand-name">WellNest</div>
         <div className="sidebar-brand-sub">Maternal Care System</div>
       </div>
 
-      {/* Nav */}
       <nav className="sidebar-nav" style={{ flex: 1 }}>
         <div className="sidebar-section-label">Main</div>
         {navItems.map(({ to, icon: Icon, label }) => (
@@ -53,7 +51,6 @@ export default function Sidebar({ isOpen }) {
           </NavLink>
         ))}
 
-        {/* Admin section — only visible to admin and superadmin */}
         {isAdmin && (
           <>
             <div className="sidebar-section-label" style={{ marginTop: '0.75rem' }}>Admin</div>
@@ -71,7 +68,6 @@ export default function Sidebar({ isOpen }) {
         )}
       </nav>
 
-      {/* User footer */}
       <div className="sidebar-footer">
         <div className="sidebar-user">
           <div className="sidebar-avatar">{initials}</div>
