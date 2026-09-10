@@ -120,17 +120,21 @@ exports.markVisited = async (req, res) => {
 exports.markSkipped = async (req, res) => {
   try {
     const { reason } = req.body;
+    if (!reason || !reason.trim()) {
+      return res.status(400).json({ error: 'Reason is mandatory for skipping a stage' });
+    }
     const stage = await PatientStage.findOne({
       where: { id: req.params.stageId, patient_id: req.params.id }
     });
     if (!stage) return res.status(404).json({ error: 'Stage not found' });
     await stage.update({
       status:      'skipped',
-      skip_reason: reason || 'staff_decision',
+      skip_reason: reason.trim(),
       recorded_by: req.user.id
     });
-    res.json({ message: 'Stage skipped' });
+    res.json({ message: 'Stage skipped successfully', skip_reason: reason.trim() });
   } catch (err) {
+    console.error('Mark skipped error:', err);
     res.status(500).json({ error: 'Failed to skip stage' });
   }
 };
@@ -138,21 +142,76 @@ exports.markSkipped = async (req, res) => {
 // ── PUT /api/patients/:id/stages/:stageId/date ───────────────────────────────
 exports.overrideDate = async (req, res) => {
   try {
-    const { new_date, override_reason } = req.body;
+    const { new_date, override_reason, cascade = false } = req.body;
     if (!new_date) return res.status(400).json({ error: 'new_date required' });
+    if (!override_reason || !override_reason.trim()) {
+      return res.status(400).json({ error: 'Reason is mandatory for rescheduling' });
+    }
+
     const stage = await PatientStage.findOne({
-      where: { id: req.params.stageId, patient_id: req.params.id }
+      where:   { id: req.params.stageId, patient_id: req.params.id },
+      include: [{ model: StageTemplate, as: 'template' }]
     });
     if (!stage) return res.status(404).json({ error: 'Stage not found' });
+
+    // Calculate diff in calendar days without timezone offset issues
+    const [oldY, oldM, oldD] = (stage.scheduled_date || '').split('-').map(Number);
+    const [newY, newM, newD] = new_date.split('-').map(Number);
+    const oldUtc = Date.UTC(oldY, oldM - 1, oldD);
+    const newUtc = Date.UTC(newY, newM - 1, newD);
+    const diffDays = Math.round((newUtc - oldUtc) / (1000 * 60 * 60 * 24));
+
     await stage.update({
       scheduled_date:  new_date,
       date_overridden: true,
-      override_reason,
+      override_reason: override_reason.trim(),
       recorded_by:     req.user.id
     });
-    res.json({ message: 'Stage date overridden', scheduled_date: new_date });
+
+    let cascadedCount = 0;
+    if (cascade && diffDays !== 0) {
+      const subsequentStages = await PatientStage.findAll({
+        where: {
+          patient_id: req.params.id,
+          status:     { [Op.in]: ['pending', 'notified'] }
+        },
+        include: [{
+          model: StageTemplate,
+          as:    'template',
+          where: {
+            type:        stage.template.type,
+            order_index: { [Op.gt]: stage.template.order_index }
+          }
+        }],
+        order: [['template', 'order_index', 'ASC']]
+      });
+
+      for (const sub of subsequentStages) {
+        if (sub.scheduled_date) {
+          const [sY, sM, sD] = sub.scheduled_date.split('-').map(Number);
+          const nextDate = new Date(Date.UTC(sY, sM - 1, sD + diffDays));
+          const formattedNext = nextDate.toISOString().split('T')[0];
+          await sub.update({
+            scheduled_date:  formattedNext,
+            date_overridden: true,
+            override_reason: `Cascaded (${diffDays > 0 ? '+' : ''}${diffDays}d) from ${stage.template.stage_name}: ${override_reason.trim()}`,
+            recorded_by:     req.user.id
+          });
+          cascadedCount++;
+        }
+      }
+    }
+
+    res.json({
+      message: cascade
+        ? `Stage and ${cascadedCount} subsequent stage(s) rescheduled successfully`
+        : 'Stage rescheduled successfully',
+      scheduled_date: new_date,
+      cascaded: cascadedCount
+    });
   } catch (err) {
-    res.status(500).json({ error: 'Failed to override date' });
+    console.error('Override date error:', err);
+    res.status(500).json({ error: 'Failed to reschedule stage' });
   }
 };
 

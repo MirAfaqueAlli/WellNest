@@ -40,11 +40,16 @@ export default function Hospital() {
 
   function set(k, v) { setForm(f => ({ ...f, [k]: v })); }
 
+  function normalizePhone(val) {
+    const digits = val.replace(/\D/g, '').slice(-10);
+    return digits.length === 10 ? `+91${digits}` : val.trim();
+  }
+
   async function handleSave(e) {
     e.preventDefault();
     setSaving(true); setError(''); setSuccess('');
     try {
-      await api.put(`/hospitals/${hospitalId}`, form);
+      await api.put(`/hospitals/${hospitalId}`, { ...form, phone: form.phone ? normalizePhone(form.phone) : '' });
       setSuccess('Settings saved successfully.');
       setTimeout(() => setSuccess(''), 4000);
     } catch (err) {
@@ -56,7 +61,7 @@ export default function Hospital() {
     if (!testNumber.trim()) return;
     setTesting(true); setTestResult(null);
     try {
-      await api.post(`/hospitals/${hospitalId}/test-whatsapp`, { test_number: testNumber });
+      await api.post(`/hospitals/${hospitalId}/test-whatsapp`, { test_number: normalizePhone(testNumber) });
       setTestResult({ ok: true, message: 'Test message sent! Check your WhatsApp.' });
     } catch (err) {
       setTestResult({ ok: false, message: err.response?.data?.error || 'Test failed' });
@@ -113,7 +118,25 @@ export default function Hospital() {
 
               <div className="form-group">
                 <label className="input-label">Phone</label>
-                <input className="input" placeholder="+91 9876543210" value={form.phone} onChange={e => set('phone', e.target.value)} />
+                <div style={{ display: 'flex', alignItems: 'center' }}>
+                  <span style={{
+                    padding: '0 0.625rem', height: 36,
+                    display: 'flex', alignItems: 'center',
+                    background: 'var(--color-surface-alt, rgba(255,255,255,0.05))',
+                    border: '1px solid var(--color-border)', borderRight: 'none',
+                    borderRadius: 'var(--radius-sm) 0 0 var(--radius-sm)',
+                    fontSize: '0.8125rem', color: 'var(--color-text-muted)',
+                    flexShrink: 0, userSelect: 'none',
+                  }}>+91</span>
+                  <input
+                    className="input"
+                    style={{ borderRadius: '0 var(--radius-sm) var(--radius-sm) 0' }}
+                    placeholder="9876543210"
+                    value={form.phone}
+                    onChange={e => set('phone', e.target.value.replace(/\D/g, '').slice(0, 10))}
+                    maxLength={10}
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -202,13 +225,25 @@ export default function Hospital() {
               Send a test message to verify your API credentials are working correctly.
             </div>
             <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <input
-                className="input"
-                placeholder="+91 9876543210 — number to receive test"
-                value={testNumber}
-                onChange={e => setTestNumber(e.target.value)}
-                style={{ flex: 1 }}
-              />
+              <div style={{ flex: 1, display: 'flex', alignItems: 'center' }}>
+                <span style={{
+                  padding: '0 0.625rem', height: 36,
+                  display: 'flex', alignItems: 'center',
+                  background: 'var(--color-surface-alt, rgba(255,255,255,0.05))',
+                  border: '1px solid var(--color-border)', borderRight: 'none',
+                  borderRadius: 'var(--radius-sm) 0 0 var(--radius-sm)',
+                  fontSize: '0.8125rem', color: 'var(--color-text-muted)',
+                  flexShrink: 0, userSelect: 'none',
+                }}>+91</span>
+                <input
+                  className="input"
+                  style={{ borderRadius: '0 var(--radius-sm) var(--radius-sm) 0' }}
+                  placeholder="9876543210"
+                  value={testNumber}
+                  onChange={e => setTestNumber(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                  maxLength={10}
+                />
+              </div>
               <button
                 type="button"
                 className="btn-secondary"

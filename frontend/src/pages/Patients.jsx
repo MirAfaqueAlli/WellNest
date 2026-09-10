@@ -43,30 +43,33 @@ export default function Patients() {
   const [total,      setTotal]      = useState(0);
   const [pages,      setPages]      = useState(1);
   const [page,       setPage]       = useState(1);
-  const [search,     setSearch]     = useState('');
-  const [typeFilter, setTypeFilter] = useState('');
-  const [sort,       setSort]       = useState('next_stage');
-  const [loading,    setLoading]    = useState(true);
-  const [showModal,  setShowModal]  = useState(false);
+  const [search,       setSearch]       = useState('');
+  const [typeFilter,   setTypeFilter]   = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [sort,         setSort]         = useState('next_stage');
+  const [loading,      setLoading]      = useState(true);
+  const [showModal,    setShowModal]    = useState(false);
 
   const fetchPatients = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams({ page, limit: LIMIT, sort });
-      if (search)     params.set('search', search);
-      if (typeFilter) params.set('type',   typeFilter);
+      if (search)       params.set('search', search);
+      if (typeFilter)   params.set('type',   typeFilter);
+      if (statusFilter) params.set('status', statusFilter);
       const res = await api.get(`/patients?${params}`);
       setPatients(res.data.patients);
       setTotal(res.data.total);
       setPages(res.data.pages || 1);
     } catch { /* ignore */ }
     finally { setLoading(false); }
-  }, [page, search, typeFilter, sort]);
+  }, [page, search, typeFilter, statusFilter, sort]);
 
   useEffect(() => { fetchPatients(); }, [fetchPatients]);
 
   function handleSearch(e) { setSearch(e.target.value); setPage(1); }
   function handleType(e)   { setTypeFilter(e.target.value); setPage(1); }
+  function handleStatus(e) { setStatusFilter(e.target.value); setPage(1); }
   function handleSort(e)   { setSort(e.target.value); setPage(1); }
 
   const startRow = total === 0 ? 0 : (page - 1) * LIMIT + 1;
@@ -105,7 +108,7 @@ export default function Patients() {
         </select>
 
         {/* Status filter */}
-        <select className="input" style={{ width: 'auto' }} onChange={e => { /* could add status filter */ }}>
+        <select className="input" style={{ width: 'auto' }} value={statusFilter} onChange={handleStatus}>
           <option value="">All Status</option>
           <option value="active">Active</option>
           <option value="completed">Completed</option>

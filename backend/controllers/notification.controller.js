@@ -6,23 +6,34 @@ const { sendWhatsApp, testConnection } = require('../services/whatsapp.service')
 // ── GET /api/notifications ────────────────────────────────────────────────────
 exports.listNotifications = async (req, res) => {
   try {
-    const { status, type, page = 1, limit = 30 } = req.query;
+    const { status, type, page = 1, limit = 10 } = req.query;
+    const lim = parseInt(limit) || 10;
+    const offset = (parseInt(page) - 1) * lim;
+
     const where = {};
     if (status) where.status = status;
     if (type)   where.type   = type;
 
-    const offset = (parseInt(page) - 1) * parseInt(limit);
     const { count, rows } = await Notification.findAndCountAll({
       where,
-      include: [{ model: Patient, attributes: ['name', 'whatsapp_number', 'hospital_id'] }],
-      order:   [['createdAt', 'DESC']],
-      limit:   parseInt(limit),
+      include: [{
+        model: Patient,
+        attributes: ['name', 'whatsapp_number', 'hospital_id'],
+        where: { hospital_id: req.user.hospital_id },
+        required: true
+      }],
+      order: [['createdAt', 'DESC']],
+      limit: lim,
       offset
     });
 
-    // Scope to hospital
-    const scoped = rows.filter(n => n.Patient?.hospital_id === req.user.hospital_id);
-    res.json({ total: count, page: parseInt(page), notifications: scoped });
+    res.json({
+      total:         count,
+      page:          parseInt(page),
+      limit:         lim,
+      pages:         Math.ceil(count / lim) || 1,
+      notifications: rows
+    });
   } catch (err) {
     console.error('List notifications error:', err);
     res.status(500).json({ error: 'Failed to fetch notifications' });
@@ -73,7 +84,7 @@ exports.testWhatsApp = async (req, res) => {
     if (ok) {
       res.json({
         success: true,
-        message: `✅ Message sent to ${test_number}. Check your WhatsApp! (Gateway may take 20–30s to deliver)`
+        message: '✅ Message sent successfully. Check your WhatsApp! (Gateway may take 20–30s to deliver)'
       });
     } else {
       res.status(502).json({

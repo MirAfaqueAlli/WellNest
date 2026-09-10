@@ -58,6 +58,14 @@ sequelize.authenticate()
   })
   .then(async () => {
     console.log('✅ Database tables synced');
+    // Ensure ENUM includes all roles even on existing databases without manual ALTER
+    await sequelize.query(
+      "ALTER TABLE users MODIFY COLUMN role ENUM('superadmin','admin','staff','doctor_pregnancy','doctor_immunization') DEFAULT 'staff';"
+    ).catch(err => console.log('ℹ️ Role ENUM sync check:', err.message));
+    // Ensure skip_reason is TEXT to allow custom medical reasons
+    await sequelize.query(
+      "SET FOREIGN_KEY_CHECKS = 0; ALTER TABLE patient_stages MODIFY COLUMN skip_reason TEXT; SET FOREIGN_KEY_CHECKS = 1;"
+    ).catch(err => console.log('ℹ️ skip_reason TEXT check:', err.message));
     await seedStageTemplates();    // auto-seed stage templates on every startup (safe — uses upsert)
     app.listen(PORT, () => {
       console.log(`🚀 WellNest API running on http://localhost:${PORT}`);

@@ -104,7 +104,6 @@ exports.listPatients = async (req, res) => {
     const order = ORDER_MAP[sort] || ORDER_MAP.next_stage;
 
     // ── Subquery attributes ─────────────────────────────────────────────────
-    // next upcoming pending/notified stage
     const nextStageDateSub  = literal(`(
       SELECT MIN(ps.scheduled_date)
       FROM patient_stages ps
@@ -124,7 +123,6 @@ exports.listPatients = async (req, res) => {
       LIMIT 1
     )`);
 
-    // most recent visited stage
     const currentStageSub   = literal(`(
       SELECT st.stage_name
       FROM patient_stages ps
@@ -148,8 +146,8 @@ exports.listPatients = async (req, res) => {
       order,
       limit:    lim,
       offset,
-      subQuery: false,  // required when using literal() in ORDER BY with LIMIT
-      raw:      true,   // serialize computed columns (literals) into the result
+      subQuery: false,
+      raw:      true,
       nest:     false,
     });
 

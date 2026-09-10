@@ -1,5 +1,6 @@
-const bcrypt = require('bcryptjs');
-const jwt    = require('jsonwebtoken');
+const { Op }   = require('sequelize');
+const bcrypt   = require('bcryptjs');
+const jwt      = require('jsonwebtoken');
 const { User, Hospital } = require('../models/index');
 
 const generateToken = (id) =>
@@ -48,11 +49,13 @@ exports.registerStaff = async (req, res) => {
       return res.status(400).json({ error: 'name, email and password required' });
 
     const hashed = await bcrypt.hash(password, 12);
+    const ALLOWED_ROLES = ['staff', 'admin', 'doctor_pregnancy', 'doctor_immunization'];
+    const assignedRole  = ALLOWED_ROLES.includes(role) ? role : 'staff';
     const staff  = await User.create({
       name,
       email,
       password_hash: hashed,
-      role:          role || 'staff',
+      role:          assignedRole,
       hospital_id:   req.user.hospital_id
     });
 
@@ -68,13 +71,36 @@ exports.registerStaff = async (req, res) => {
 // ── GET /api/auth/staff  (admin+ only) ───────────────────────────────────────
 exports.listStaff = async (req, res) => {
   try {
-    const staff = await User.findAll({
-      where:      { hospital_id: req.user.hospital_id },
+    const { page = 1, limit = 10, search, role } = req.query;
+    const lim = parseInt(limit) || 10;
+    const offset = (parseInt(page) - 1) * lim;
+
+    const where = { hospital_id: req.user.hospital_id };
+    if (role) where.role = role;
+    if (search) {
+      where[Op.or] = [
+        { name:  { [Op.like]: `%${search}%` } },
+        { email: { [Op.like]: `%${search}%` } }
+      ];
+    }
+
+    const { count, rows } = await User.findAndCountAll({
+      where,
       attributes: { exclude: ['password_hash'] },
-      order:      [['createdAt', 'DESC']]
+      order:      [['createdAt', 'DESC']],
+      limit:      lim,
+      offset
     });
-    res.json(staff);
+
+    res.json({
+      total: count,
+      page:  parseInt(page),
+      limit: lim,
+      pages: Math.ceil(count / lim) || 1,
+      staff: rows
+    });
   } catch (err) {
+    console.error('List staff error:', err);
     res.status(500).json({ error: 'Failed to fetch staff' });
   }
 };

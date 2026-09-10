@@ -66,6 +66,7 @@ async function sendWhatsApp(to, templateKey, data, patientId = null, stageId = n
 
   let status            = 'failed';
   let providerMessageId = null;
+  let errorMessage      = null;
 
   const { apiUrl, apiKey } = await resolveCredentials(hospitalId);
 
@@ -100,7 +101,8 @@ async function sendWhatsApp(to, templateKey, data, patientId = null, stageId = n
       console.warn(`[WhatsApp] ⚠️ Gateway 5xx (message delivered) | type: ${templateKey} | to: ${formattedPhone}`);
 
     } else {
-      console.error(`[WhatsApp] ❌ Failed (${response.status}): ${response.data?.message || 'unknown'} | type: ${templateKey}`);
+      errorMessage = response.data?.message || `Gateway error (${response.status})`;
+      console.error(`[WhatsApp] ❌ Failed (${response.status}): ${errorMessage} | type: ${templateKey}`);
     }
 
   } catch (err) {
@@ -137,7 +139,7 @@ async function sendWhatsApp(to, templateKey, data, patientId = null, stageId = n
     }
   }
 
-  return status === 'sent';
+  return { success: status === 'sent', error: errorMessage, providerMessageId };
 }
 
 // ── Test Connection ───────────────────────────────────────────────────────────
@@ -150,7 +152,11 @@ async function testConnection(testNumber, hospitalId = null) {
       { custom_message: '✅ WellNest WhatsApp API test message. Integration is working!' },
       null, null, hospitalId
     );
-    return { ok: result !== null, error: null };
+    if (result.success) {
+      return { ok: true, error: null, providerMessageId: result.providerMessageId };
+    } else {
+      return { ok: false, error: result.error || 'Gateway returned failure' };
+    }
   } catch (err) {
     return { ok: false, error: err._friendlyMessage || err.message };
   }

@@ -12,7 +12,7 @@ const PatientStage = sequelize.define('PatientStage', {
   actual_visit_date:  { type: DataTypes.DATEONLY },           // filled when patient comes in
   date_overridden:    { type: DataTypes.BOOLEAN, defaultValue: false },
   override_reason:    { type: DataTypes.TEXT },
-  skip_reason:        { type: DataTypes.ENUM('pre_registration','date_revised','staff_decision') },
+  skip_reason:        { type: DataTypes.TEXT },
   stage_data:         { type: DataTypes.JSON },               // BP, weight, vaccines given, etc.
   notes:              { type: DataTypes.TEXT },
   recorded_by:        { type: DataTypes.INTEGER }             // FK to users

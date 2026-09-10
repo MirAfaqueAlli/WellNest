@@ -32,11 +32,16 @@ function TestModal({ onClose }) {
   const [loading, setLoading] = useState(false);
   const [result, setResult]   = useState(null);
 
+  function normalizePhone(val) {
+    const digits = val.replace(/\D/g, '').slice(-10);
+    return digits.length === 10 ? `+91${digits}` : val.trim();
+  }
+
   async function test() {
     if (!number) return;
     setLoading(true); setResult(null);
     try {
-      const res = await api.post('/notifications/test-whatsapp', { test_number: number });
+      const res = await api.post('/notifications/test-whatsapp', { test_number: normalizePhone(number) });
       setResult({ success: true, message: res.data.message });
     } catch (err) {
       setResult({ success: false, message: err.response?.data?.message || err.response?.data?.error || 'Test failed' });
@@ -60,15 +65,25 @@ function TestModal({ onClose }) {
 
           <div className="form-group">
             <label className="input-label">WhatsApp Number</label>
-            <input
-              className="input"
-              placeholder="+919876543210"
-              value={number}
-              onChange={e => setNumber(e.target.value)}
-            />
-            <span style={{ fontSize: '0.6875rem', color: 'var(--color-text-faint)' }}>
-              Include country code (e.g. +91 for India)
-            </span>
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              <span style={{
+                padding: '0 0.625rem', height: 36,
+                display: 'flex', alignItems: 'center',
+                background: 'var(--color-surface-alt, rgba(255,255,255,0.05))',
+                border: '1px solid var(--color-border)', borderRight: 'none',
+                borderRadius: 'var(--radius-sm) 0 0 var(--radius-sm)',
+                fontSize: '0.8125rem', color: 'var(--color-text-muted)',
+                flexShrink: 0, userSelect: 'none',
+              }}>+91</span>
+              <input
+                className="input"
+                style={{ borderRadius: '0 var(--radius-sm) var(--radius-sm) 0' }}
+                placeholder="9876543210"
+                value={number}
+                onChange={e => setNumber(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                maxLength={10}
+              />
+            </div>
           </div>
 
           {result && (
@@ -102,24 +117,29 @@ function TestModal({ onClose }) {
 
 /* ─── Main Component ────────────────────────────────────────────── */
 export default function Notifications() {
-  const [notifs,   setNotifs]   = useState([]);
-  const [total,    setTotal]    = useState(0);
-  const [pages,    setPages]    = useState(1);
-  const [page,     setPage]     = useState(1);
-  const [loading,  setLoading]  = useState(true);
-  const [showTest, setShowTest] = useState(false);
-  const [cronMsg,  setCronMsg]  = useState('');
+  const [notifs,       setNotifs]       = useState([]);
+  const [total,        setTotal]        = useState(0);
+  const [pages,        setPages]        = useState(1);
+  const [page,         setPage]         = useState(1);
+  const [statusFilter, setStatusFilter] = useState('');
+  const [typeFilter,   setTypeFilter]   = useState('');
+  const [loading,      setLoading]      = useState(true);
+  const [showTest,     setShowTest]     = useState(false);
+  const [cronMsg,      setCronMsg]      = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await api.get(`/notifications?page=${page}&limit=${LIMIT}`);
+      const params = new URLSearchParams({ page, limit: LIMIT });
+      if (statusFilter) params.set('status', statusFilter);
+      if (typeFilter)   params.set('type',   typeFilter);
+      const res = await api.get(`/notifications?${params}`);
       setNotifs(res.data.notifications);
       setTotal(res.data.total);
-      setPages(Math.ceil(res.data.total / LIMIT) || 1);
+      setPages(res.data.pages || 1);
     } catch { /* ignore */ }
     finally { setLoading(false); }
-  }, [page]);
+  }, [page, statusFilter, typeFilter]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -161,6 +181,40 @@ export default function Notifications() {
             <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
           </button>
         </div>
+      </div>
+
+      {/* Filters */}
+      <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+        <select
+          className="input"
+          style={{ width: 'auto' }}
+          value={statusFilter}
+          onChange={e => { setStatusFilter(e.target.value); setPage(1); }}
+        >
+          <option value="">All Statuses</option>
+          <option value="sent">Sent</option>
+          <option value="pending">Pending</option>
+          <option value="delivered">Delivered</option>
+          <option value="read">Read</option>
+          <option value="failed">Failed</option>
+        </select>
+
+        <select
+          className="input"
+          style={{ width: 'auto' }}
+          value={typeFilter}
+          onChange={e => { setTypeFilter(e.target.value); setPage(1); }}
+        >
+          <option value="">All Types</option>
+          <option value="reminder_today">📅 Today Reminder</option>
+          <option value="reminder_1d">1-Day Reminder</option>
+          <option value="reminder_7d">7-Day Reminder</option>
+          <option value="missed">Missed Alert</option>
+          <option value="manual">Manual</option>
+          <option value="stage_complete">Stage Complete</option>
+          <option value="edd_updated">EDD Updated</option>
+          <option value="delivery_recorded">Delivery</option>
+        </select>
       </div>
 
       <div className="card" style={{ overflow: 'hidden' }}>

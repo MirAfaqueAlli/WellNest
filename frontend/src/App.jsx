@@ -10,10 +10,18 @@ import PatientDetail from './pages/PatientDetail';
 import Notifications from './pages/Notifications';
 import Hospital      from './pages/Hospital';
 import Staff         from './pages/Staff';
+import { useAuthStore } from './store/authStore';
+
+// ── Admin-only route guard ────────────────────────────────────────────────────
+function AdminRoute({ children }) {
+  const { user } = useAuthStore();
+  const isAdmin = user?.role === 'admin' || user?.role === 'superadmin';
+  return isAdmin ? children : <Navigate to="/dashboard" replace />;
+}
 
 // ── Setup Guard ───────────────────────────────────────────────────────────────
 function AppRouter() {
-  const [setupRequired, setSetupRequired] = useState(null); // null = loading
+  const [setupRequired, setSetupRequired] = useState(null);
 
   useEffect(() => {
     fetch(`${import.meta.env.VITE_API_URL || '/api'}/setup/status`)
@@ -22,7 +30,6 @@ function AppRouter() {
       .catch(() => setSetupRequired(false));
   }, []);
 
-  // Loading screen while checking
   if (setupRequired === null) {
     return (
       <div style={{
@@ -45,8 +52,6 @@ function AppRouter() {
 
   return (
     <Routes>
-      {/* First-run setup — only accessible if setup is required.
-          onSetupComplete updates state so the rest of the app unlocks immediately. */}
       <Route
         path="/setup"
         element={
@@ -55,11 +60,7 @@ function AppRouter() {
             : <Navigate to="/dashboard" replace />
         }
       />
-
-      {/* Login */}
       <Route path="/login" element={<Login />} />
-
-      {/* Main app — redirect to /setup if not yet set up */}
       <Route
         path="/"
         element={setupRequired ? <Navigate to="/setup" replace /> : <AppLayout />}
@@ -69,10 +70,9 @@ function AppRouter() {
         <Route path="patients"       element={<Patients />} />
         <Route path="patients/:id"   element={<PatientDetail />} />
         <Route path="notifications"  element={<Notifications />} />
-        <Route path="hospitals"      element={<Hospital />} />
-        <Route path="staff"          element={<Staff />} />
+        <Route path="hospitals"      element={<AdminRoute><Hospital /></AdminRoute>} />
+        <Route path="staff"          element={<AdminRoute><Staff /></AdminRoute>} />
       </Route>
-
       <Route path="*" element={<Navigate to={setupRequired ? '/setup' : '/dashboard'} replace />} />
     </Routes>
   );

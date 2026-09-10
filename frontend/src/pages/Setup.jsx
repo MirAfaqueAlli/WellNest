@@ -22,6 +22,11 @@ export default function Setup({ onSetupComplete }) {
 
   function set(k, v) { setForm(f => ({ ...f, [k]: v })); setError(''); }
 
+  function normalizePhone(val) {
+    const digits = val.replace(/\D/g, '').slice(-10);
+    return digits.length === 10 ? `+91${digits}` : val.trim();
+  }
+
   function nextStep(e) {
     e.preventDefault();
     if (!form.hospital_name.trim()) { setError('Hospital name is required'); return; }
@@ -45,7 +50,7 @@ export default function Setup({ onSetupComplete }) {
         body: JSON.stringify({
           hospital_name:    form.hospital_name.trim(),
           hospital_address: form.hospital_address.trim() || undefined,
-          hospital_phone:   form.hospital_phone.trim()   || undefined,
+          hospital_phone:   form.hospital_phone ? normalizePhone(form.hospital_phone) : undefined,
           admin_name:       form.admin_name.trim(),
           admin_email:      form.admin_email.trim(),
           admin_password:   form.admin_password,
@@ -154,12 +159,25 @@ export default function Setup({ onSetupComplete }) {
 
                 <div className="form-group">
                   <label className="input-label">Phone <span style={{ color: 'var(--color-text-faint)', fontWeight: 400 }}>(optional)</span></label>
-                  <input
-                    className="input"
-                    placeholder="+91 9876543210"
-                    value={form.hospital_phone}
-                    onChange={e => set('hospital_phone', e.target.value)}
-                  />
+                  <div style={{ display: 'flex', alignItems: 'center' }}>
+                    <span style={{
+                      padding: '0 0.625rem', height: 36,
+                      display: 'flex', alignItems: 'center',
+                      background: 'var(--color-surface-alt, rgba(255,255,255,0.05))',
+                      border: '1px solid var(--color-border)', borderRight: 'none',
+                      borderRadius: 'var(--radius-sm) 0 0 var(--radius-sm)',
+                      fontSize: '0.8125rem', color: 'var(--color-text-muted)',
+                      flexShrink: 0, userSelect: 'none',
+                    }}>+91</span>
+                    <input
+                      className="input"
+                      style={{ borderRadius: '0 var(--radius-sm) var(--radius-sm) 0' }}
+                      placeholder="9876543210"
+                      value={form.hospital_phone}
+                      onChange={e => set('hospital_phone', e.target.value.replace(/\D/g, '').slice(0, 10))}
+                      maxLength={10}
+                    />
+                  </div>
                 </div>
 
                 <button

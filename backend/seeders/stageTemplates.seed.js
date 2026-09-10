@@ -1,5 +1,6 @@
 const { StageTemplate } = require('../models/index');
 
+
 // ─────────────────────────────────────────────────────────────────────────────
 // PREGNANCY STAGES — ANC Schedule (WHO / NHS standard)
 // Scheduled date = EDD − (40 − trigger_value) weeks
@@ -525,7 +526,7 @@ const immunizationStages = [
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SEEDER: bulkCreate (ignoreDuplicates for initial seed)
+// SEEDER: upsert (safe — creates if missing, updates if changed)
 // ─────────────────────────────────────────────────────────────────────────────
 async function seed() {
   const allStages = [...pregnancyStages, ...immunizationStages];
