@@ -66,6 +66,10 @@ sequelize.authenticate()
     await sequelize.query(
       "SET FOREIGN_KEY_CHECKS = 0; ALTER TABLE patient_stages MODIFY COLUMN skip_reason TEXT; SET FOREIGN_KEY_CHECKS = 1;"
     ).catch(err => console.log('ℹ️ skip_reason TEXT check:', err.message));
+    // Ensure notifications.type ENUM includes all notification types (stage_skipped, stage_rescheduled added later)
+    await sequelize.query(
+      "ALTER TABLE notifications MODIFY COLUMN type ENUM('reminder_7d','reminder_1d','reminder_today','missed','manual','stage_complete','edd_updated','delivery_recorded','stage_skipped','stage_rescheduled') NOT NULL;"
+    ).catch(err => console.log('ℹ️ notifications type ENUM check:', err.message));
     await seedStageTemplates();    // auto-seed stage templates on every startup (safe — uses upsert)
     app.listen(PORT, () => {
       console.log(`🚀 WellNest API running on http://localhost:${PORT}`);
