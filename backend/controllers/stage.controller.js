@@ -124,14 +124,34 @@ exports.markSkipped = async (req, res) => {
       return res.status(400).json({ error: 'Reason is mandatory for skipping a stage' });
     }
     const stage = await PatientStage.findOne({
-      where: { id: req.params.stageId, patient_id: req.params.id }
+      where:   { id: req.params.stageId, patient_id: req.params.id },
+      include: [{ model: StageTemplate, as: 'template' }]
     });
     if (!stage) return res.status(404).json({ error: 'Stage not found' });
+
+    const scheduledDate = stage.scheduled_date || '';
+
     await stage.update({
       status:      'skipped',
       skip_reason: reason.trim(),
       recorded_by: req.user.id
     });
+
+    // Notify patient
+    try {
+      const patient = await Patient.findByPk(req.params.id);
+      if (patient?.whatsapp_number) {
+        await sendWhatsApp(patient.whatsapp_number, 'stage_skipped', {
+          patient_name:   patient.name,
+          stage_name:     stage.template?.stage_name || 'appointment',
+          scheduled_date: scheduledDate,
+          reason:         reason.trim(),
+        }, patient.id, stage.id, patient.hospital_id);
+      }
+    } catch (notifErr) {
+      console.warn('[WhatsApp] Skip notification failed (non-fatal):', notifErr.message);
+    }
+
     res.json({ message: 'Stage skipped successfully', skip_reason: reason.trim() });
   } catch (err) {
     console.error('Mark skipped error:', err);
@@ -200,6 +220,21 @@ exports.overrideDate = async (req, res) => {
           cascadedCount++;
         }
       }
+    }
+
+    // Notify patient about rescheduled appointment
+    try {
+      const patient = await Patient.findByPk(req.params.id);
+      if (patient?.whatsapp_number) {
+        await sendWhatsApp(patient.whatsapp_number, 'stage_rescheduled', {
+          patient_name: patient.name,
+          stage_name:   stage.template?.stage_name || 'appointment',
+          new_date,
+          reason:       override_reason.trim(),
+        }, patient.id, stage.id, patient.hospital_id);
+      }
+    } catch (notifErr) {
+      console.warn('[WhatsApp] Reschedule notification failed (non-fatal):', notifErr.message);
     }
 
     res.json({

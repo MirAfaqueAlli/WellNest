@@ -40,6 +40,46 @@ export default function Hospital() {
 
   function set(k, v) { setForm(f => ({ ...f, [k]: v })); }
 
+  // ── Queue param helpers ──────────────────────────────────────────────────────
+  function hasQueueParam(url) {
+    if (!url) return false;
+    try {
+      return new URL(url).searchParams.get('queue') === 'true';
+    } catch (_) {
+      return /[?&]queue=true\b/i.test(url);
+    }
+  }
+
+  function toggleQueueInUrl(url, enable) {
+    const base = (url || '').trim();
+    if (!base) return base;
+    try {
+      const parsed = new URL(base);
+      if (enable) { parsed.searchParams.set('queue', 'true'); }
+      else         { parsed.searchParams.delete('queue'); }
+      let result = parsed.toString();
+      if (result.endsWith('?')) result = result.slice(0, -1);
+      return result;
+    } catch (_) {
+      // fallback for non-standard URLs
+      if (enable) {
+        if (/[?&]queue=true\b/i.test(base)) return base;
+        return base + (base.includes('?') ? '&' : '?') + 'queue=true';
+      } else {
+        return base
+          .replace(/&queue=true\b/gi, '')
+          .replace(/\?queue=true&/gi, '?')
+          .replace(/\?queue=true$/gi, '');
+      }
+    }
+  }
+
+  const queueEnabled = hasQueueParam(form.whatsapp_api_url);
+
+  function handleQueueToggle(checked) {
+    set('whatsapp_api_url', toggleQueueInUrl(form.whatsapp_api_url, checked));
+  }
+
   function normalizePhone(val) {
     const digits = val.replace(/\D/g, '').slice(-10);
     return digits.length === 10 ? `+91${digits}` : val.trim();
@@ -200,6 +240,46 @@ export default function Hospital() {
                 </div>
                 <span style={{ fontSize: '0.6875rem', color: 'var(--color-text-faint)', marginTop: '2px', display: 'block' }}>Sent as <code style={{ fontFamily: 'monospace' }}>x-api-key</code> header</span>
               </div>
+
+              {/* ── Queue toggle ── */}
+              <label
+                htmlFor="whatsapp-queue-toggle"
+                style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '0.625rem',
+                  padding: '0.625rem 0.75rem',
+                  borderRadius: 'var(--radius-sm)',
+                  border: `1px solid ${queueEnabled ? 'var(--color-primary, #6366f1)' : 'var(--color-border)'}`,
+                  background: queueEnabled ? 'var(--color-primary-bg, rgba(99,102,241,0.07))' : 'transparent',
+                  cursor: 'pointer',
+                  transition: 'border-color 0.15s, background 0.15s',
+                  userSelect: 'none',
+                }}
+              >
+                <input
+                  id="whatsapp-queue-toggle"
+                  type="checkbox"
+                  checked={queueEnabled}
+                  onChange={e => handleQueueToggle(e.target.checked)}
+                  style={{ marginTop: '1px', accentColor: 'var(--color-primary, #6366f1)', width: 15, height: 15, flexShrink: 0, cursor: 'pointer' }}
+                />
+                <span style={{ flex: 1 }}>
+                  <span style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)' }}>
+                    Enable Message Queuing
+                    <code style={{ marginLeft: '0.4rem', fontSize: '0.7rem', fontFamily: 'monospace', padding: '1px 5px', borderRadius: 4, background: 'var(--color-lightColor)', color: 'var(--color-text-muted)' }}>queue=true</code>
+                  </span>
+                  <span style={{ display: 'block', fontSize: '0.6875rem', color: 'var(--color-text-faint)', marginTop: '2px' }}>
+                    Appends <code style={{ fontFamily: 'monospace' }}>&amp;queue=true</code> to every API request — recommended for anti-ban rate-limited delivery
+                  </span>
+                  {queueEnabled && form.whatsapp_api_url && (
+                    <span style={{ display: 'block', marginTop: '5px', fontSize: '0.65rem', fontFamily: 'monospace', color: 'var(--color-primary, #6366f1)', wordBreak: 'break-all' }}>
+                      {form.whatsapp_api_url}
+                    </span>
+                  )}
+                </span>
+              </label>
+
             </div>
           </div>
 

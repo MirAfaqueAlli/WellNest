@@ -20,6 +20,12 @@ const templates = {
   stage_complete: (d) =>
     `Hello ${d.patient_name} ✅\nWe've recorded your visit for *${d.stage_name}*.\nYour next appointment: *${d.next_stage}* on *${d.next_date}*.\nThank you for visiting! 🏥`,
 
+  stage_rescheduled: (d) =>
+    `Hello ${d.patient_name} 📅\nYour appointment for *${d.stage_name}* has been rescheduled.\nNew Date: *${d.new_date}*.\nReason: ${d.reason}.\nPlease make a note of the new date. See you then! 🏥`,
+
+  stage_skipped: (d) =>
+    `Hello ${d.patient_name} ℹ️\nYour appointment for *${d.stage_name}* (scheduled on ${d.scheduled_date}) has been marked as skipped by our team.\nReason: ${d.reason}.\nPlease contact us if you have any questions. 💙`,
+
   missed: (d) =>
     `Hello ${d.patient_name} ⚠️\nWe noticed you missed your appointment for *${d.stage_name}* on ${d.scheduled_date}.\nPlease call us at ${d.hospital_phone} to reschedule.\nYour health is important to us! 💙`,
 
@@ -55,10 +61,38 @@ async function resolveCredentials(hospitalId) {
   };
 }
 
+// ── Extract queue flag from URL, returning clean URL + flag ──────────────────
+function extractQueueFlag(rawUrl) {
+  if (!rawUrl) return { cleanUrl: rawUrl, useQueue: false };
+  try {
+    const parsed = new URL(rawUrl);
+    const useQueue = parsed.searchParams.get('queue') === 'true';
+    if (useQueue) {
+      parsed.searchParams.delete('queue');
+      let cleanUrl = parsed.toString();
+      if (cleanUrl.endsWith('?')) cleanUrl = cleanUrl.slice(0, -1);
+      return { cleanUrl, useQueue: true };
+    }
+  } catch (_) {
+    // non-standard URL — check string
+    if (/[?&]queue=true\b/i.test(rawUrl)) {
+      const cleanUrl = rawUrl
+        .replace(/&queue=true\b/gi, '')
+        .replace(/\?queue=true&/gi, '?')
+        .replace(/\?queue=true$/gi, '');
+      return { cleanUrl, useQueue: true };
+    }
+  }
+  return { cleanUrl: rawUrl, useQueue: false };
+}
+
 // ── Core Send Function ────────────────────────────────────────────────────────
 /**
  * Send a WhatsApp message via GET request with query params (Rextrox v2 format):
- *   GET {apiUrl}?apikey={apiKey}&recipient={phone}&text={message}
+ *   GET {apiUrl}?apikey={apiKey}&recipient={phone}&text={message}[&queue=true]
+ *
+ * The &queue=true param is added automatically when the stored API URL contains
+ * queue=true — controlled via the Hospital Settings checkbox in the frontend.
  */
 async function sendWhatsApp(to, templateKey, data, patientId = null, stageId = null, hospitalId = null) {
   const body           = templates[templateKey]?.(data) ?? data.custom_message ?? '';
@@ -68,19 +102,23 @@ async function sendWhatsApp(to, templateKey, data, patientId = null, stageId = n
   let providerMessageId = null;
   let errorMessage      = null;
 
-  const { apiUrl, apiKey } = await resolveCredentials(hospitalId);
+  const { apiUrl: rawApiUrl, apiKey } = await resolveCredentials(hospitalId);
+  const { cleanUrl: apiUrl, useQueue } = extractQueueFlag(rawApiUrl);
 
   try {
     if (!apiUrl || !apiKey) {
       throw new Error('WhatsApp API credentials not configured. Please set them in Hospital Settings.');
     }
 
+    const params = {
+      apikey:    apiKey,
+      recipient: formattedPhone,
+      text:      body,
+    };
+    if (useQueue) params.queue = 'true';
+
     const response = await axios.get(apiUrl, {
-      params: {
-        apikey:    apiKey,
-        recipient: formattedPhone,
-        text:      body,
-      },
+      params,
       timeout:        45000,
       validateStatus: () => true,
     });
