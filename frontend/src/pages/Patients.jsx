@@ -1,8 +1,9 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Search, Users, Eye, ArrowUpDown, ChevronLeft, ChevronRight, Calendar, CheckCircle } from 'lucide-react';
+import { Plus, Search, Users, Eye, Edit2, ArrowUpDown, ChevronLeft, ChevronRight, Calendar, CheckCircle } from 'lucide-react';
 import api from '../api/axios';
 import RegisterPatientModal from '../components/RegisterPatientModal';
+import EditPatientModal from '../components/EditPatientModal';
 
 const LIMIT = 10;
 
@@ -49,6 +50,7 @@ export default function Patients() {
   const [sort,         setSort]         = useState('next_stage');
   const [loading,      setLoading]      = useState(true);
   const [showModal,    setShowModal]    = useState(false);
+  const [editingPatient, setEditingPatient] = useState(null);
 
   const fetchPatients = useCallback(async () => {
     setLoading(true);
@@ -233,11 +235,21 @@ export default function Patients() {
                     {/* Status */}
                     <td>{statusBadge(p.status)}</td>
 
-                    {/* View */}
+                    {/* Actions */}
                     <td style={{ textAlign: 'right' }}>
-                      <Link to={`/patients/${p.id}`} className="btn-ghost" title="View">
-                        <Eye size={14} />
-                      </Link>
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                        <Link to={`/patients/${p.id}`} className="btn-ghost" title="View Details">
+                          <Eye size={14} />
+                        </Link>
+                        <button
+                          type="button"
+                          className="btn-ghost"
+                          title="Edit Patient"
+                          onClick={() => setEditingPatient(p)}
+                        >
+                          <Edit2 size={14} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -305,6 +317,14 @@ export default function Patients() {
         <RegisterPatientModal
           onClose={() => setShowModal(false)}
           onSuccess={() => { setShowModal(false); fetchPatients(); }}
+        />
+      )}
+
+      {editingPatient && (
+        <EditPatientModal
+          patient={editingPatient}
+          onClose={() => setEditingPatient(null)}
+          onSuccess={() => { setEditingPatient(null); fetchPatients(); }}
         />
       )}
     </div>

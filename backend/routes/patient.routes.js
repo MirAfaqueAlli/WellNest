@@ -9,5 +9,6 @@ router.get( '/lookup',          c.lookupByWhatsapp);
 router.post('/',                c.registerPatient);
 router.get( '/',                c.listPatients);
 router.get( '/:id',            c.getPatient);
+router.put( '/:id',            c.updatePatient);
 
 module.exports = router;

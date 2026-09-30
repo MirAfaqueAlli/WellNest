@@ -5,6 +5,7 @@ import {
   Edit2, X, Baby, FileText, Eye, AlertCircle,
 } from 'lucide-react';
 import api from '../api/axios';
+import EditPatientModal from '../components/EditPatientModal';
 
 const STATUS_CONFIG = {
   pending:  { label: 'Pending',  badge: 'badge-pending',  dot: '#d97706' },
@@ -684,6 +685,7 @@ export default function PatientDetail() {
   const [stages, setStages]       = useState([]);
   const [loading, setLoading]     = useState(true);
   const [marking, setMarking]     = useState(null);
+  const [showEdit, setShowEdit]   = useState(false);
   const [showEdd, setShowEdd]     = useState(false);
   const [showDelivery, setShowDelivery] = useState(false);
   const [stageTab, setStageTab]   = useState('pregnancy'); // will be corrected after patient loads
@@ -754,6 +756,9 @@ export default function PatientDetail() {
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <button className="btn-secondary" onClick={() => setShowEdit(true)} style={{ gap: '0.375rem' }}>
+            <Edit2 size={12} /> Edit Details
+          </button>
           {isPregnant && patient.status !== 'completed' && (
             <>
               <button className="btn-secondary" onClick={() => setShowEdd(true)} style={{ gap: '0.375rem' }}>
@@ -1123,6 +1128,13 @@ export default function PatientDetail() {
               setShowCompleteStage(s);
             }
           }}
+        />
+      )}
+      {showEdit && (
+        <EditPatientModal
+          patient={patient}
+          onClose={() => setShowEdit(false)}
+          onSuccess={() => { setShowEdit(false); load(); }}
         />
       )}
     </div>

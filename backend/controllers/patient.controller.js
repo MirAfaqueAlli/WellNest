@@ -2,7 +2,7 @@ const { addDays } = require('date-fns');
 const { Op, literal, fn, col } = require('sequelize');
 const sequelize = require('../config/db');
 const { Patient, PatientStage, StageTemplate, Hospital } = require('../models/index');
-const { generateStages } = require('../services/stage.service');
+const { generateStages, recalculateOnEddChange } = require('../services/stage.service');
 
 // ── POST /api/patients ────────────────────────────────────────────────────────
 exports.registerPatient = async (req, res) => {
@@ -256,5 +256,87 @@ exports.getDashboardStats = async (req, res) => {
   } catch (err) {
     console.error('Dashboard stats error:', err);
     res.status(500).json({ error: 'Failed to fetch stats' });
+  }
+};
+
+// ── PUT /api/patients/:id ─────────────────────────────────────────────────────
+exports.updatePatient = async (req, res) => {
+  try {
+    const patient = await Patient.findByPk(req.params.id);
+    if (!patient) return res.status(404).json({ error: 'Patient not found' });
+    if (patient.hospital_id !== req.user.hospital_id)
+      return res.status(403).json({ error: 'Access denied' });
+
+    const {
+      name,
+      whatsapp_number,
+      age,
+      address,
+      status,
+      notes,
+      // pregnancy fields
+      lmp_date,
+      edd,
+      edd_source,
+      ultrasound_scan_date,
+      // child / delivery fields
+      child_dob,
+      child_name,
+      child_gender,
+      delivery_date
+    } = req.body;
+
+    if (name !== undefined && !name.trim()) {
+      return res.status(400).json({ error: 'Patient name cannot be empty' });
+    }
+    if (whatsapp_number !== undefined && !whatsapp_number.trim()) {
+      return res.status(400).json({ error: 'WhatsApp number cannot be empty' });
+    }
+
+    const updates = {};
+    if (name !== undefined) updates.name = name.trim();
+    if (whatsapp_number !== undefined) updates.whatsapp_number = whatsapp_number.trim();
+    if (age !== undefined) updates.age = age === '' || age === null ? null : parseInt(age, 10);
+    if (address !== undefined) updates.address = address || null;
+    if (status !== undefined) updates.status = status;
+    if (notes !== undefined) updates.notes = notes || null;
+
+    let eddChanged = false;
+    let dobChanged = false;
+
+    if (patient.patient_type === 'pregnant') {
+      if (lmp_date !== undefined) updates.lmp_date = lmp_date || null;
+      if (ultrasound_scan_date !== undefined) updates.ultrasound_scan_date = ultrasound_scan_date || null;
+      if (edd_source !== undefined) updates.edd_source = edd_source;
+      if (edd !== undefined && edd && edd !== patient.edd) {
+        updates.edd = edd;
+        updates.edd_last_updated = new Date();
+        eddChanged = true;
+      }
+    }
+
+    if (patient.patient_type === 'immunization' || patient.delivery_date || child_dob !== undefined) {
+      if (child_name !== undefined) updates.child_name = child_name || null;
+      if (child_gender !== undefined) updates.child_gender = child_gender || null;
+      if (delivery_date !== undefined) updates.delivery_date = delivery_date || null;
+      if (child_dob !== undefined && child_dob && child_dob !== patient.child_dob) {
+        updates.child_dob = child_dob;
+        dobChanged = true;
+      }
+    }
+
+    await patient.update(updates);
+
+    if (eddChanged || dobChanged) {
+      await recalculateOnEddChange(patient);
+    }
+
+    res.json({ message: 'Patient updated successfully', patient });
+  } catch (err) {
+    if (err.name === 'SequelizeUniqueConstraintError') {
+      return res.status(409).json({ error: 'WhatsApp number already registered to another patient' });
+    }
+    console.error('Update patient error:', err);
+    res.status(500).json({ error: 'Failed to update patient' });
   }
 };
